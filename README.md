@@ -1,98 +1,196 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Authentication & Security
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## JWT Authentication
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This application uses JSON Web Tokens (JWT) for authentication.
 
-## Description
+### Login Flow
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+1. User submits credentials.
+2. Credentials are validated.
+3. A JWT access token is generated.
+4. The client stores the token.
+5. The token is sent in the `Authorization` header for protected requests.
 
-## Project setup
+Example:
 
-```bash
-$ npm install
+```http
+Authorization: Bearer <jwt-token>
 ```
 
-## Compile and run the project
+### JWT Configuration
 
-```bash
-# development
-$ npm run start
+* JWT Secret is stored in environment variables.
+* Tokens have an expiration time.
+* Protected routes use `JwtAuthGuard`.
+* User information is extracted through `JwtStrategy`.
 
-# watch mode
-$ npm run start:dev
+Environment Variable:
 
-# production mode
-$ npm run start:prod
+```env
+JWT_SECRET=your-secret-key
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Security Measures
 
-# e2e tests
-$ npm run test:e2e
+### Password Security
 
-# test coverage
-$ npm run test:cov
+* Passwords are hashed using bcrypt.
+* Plain text passwords are never stored.
+* Password verification is performed using bcrypt compare.
+
+### Request Validation
+
+Global validation is enabled using NestJS ValidationPipe.
+
+Features:
+
+* `whitelist: true` removes unexpected fields.
+* `forbidNonWhitelisted: true` rejects unknown properties.
+* `transform: true` converts payloads to DTO types.
+
+Example:
+
+```typescript
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+);
 ```
 
-## Deployment
+### Rate Limiting
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Rate limiting is implemented using `@nestjs/throttler`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Benefits:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+* Prevents brute-force attacks.
+* Protects authentication endpoints.
+* Reduces API abuse.
+
+Example Configuration:
+
+```typescript
+ThrottlerModule.forRoot([
+  {
+    ttl: 60000,
+    limit: 100,
+  },
+]);
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Global Guard:
 
-## Resources
+```typescript
+{
+  provide: APP_GUARD,
+  useClass: ThrottlerGuard,
+}
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+### File Upload Security
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Profile image uploads are protected through:
 
-## Support
+* File size limits
+* File type validation
+* Unique file names
+* Restricted upload directory
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Allowed Types:
 
-## Stay in touch
+* image/jpeg
+* image/png
+* image/webp
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Maximum Size:
 
-## License
+* 5 MB
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Request Payload Limits
+
+Request body size is restricted to prevent large payload attacks.
+
+Example:
+
+```typescript
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+```
+
+### Environment Variables
+
+Sensitive information is stored in environment variables:
+
+```env
+DATABASE=postgres
+USERNAME=postgres
+PASSWORD=password
+JWT_SECRET=secret-key
+```
+
+The `.env` file is excluded from source control.
+
+### Security Headers
+
+Helmet middleware is used to add secure HTTP headers.
+
+```typescript
+app.use(helmet());
+```
+
+### CORS Protection
+
+Cross-Origin Resource Sharing (CORS) is configured to allow only trusted origins.
+
+```typescript
+app.enableCors({
+  origin: ['https://your-frontend-domain.com'],
+  credentials: true,
+});
+```
+
+### Database Security
+
+* TypeORM is used to prevent SQL injection through parameterized queries.
+* Database credentials are stored in environment variables.
+* Production deployments should disable `synchronize`.
+
+Production Configuration:
+
+```typescript
+synchronize: false
+```
+
+### Logging
+
+The application logs:
+
+* Authentication failures
+* Validation errors
+* Server errors
+
+Sensitive information such as passwords, JWT secrets, and tokens are never logged.
+
+---
+
+## Security Checklist
+
+* JWT Authentication
+* Password Hashing (bcrypt)
+* DTO Validation
+* Global ValidationPipe
+* Rate Limiting
+* File Upload Validation
+* Request Payload Limits
+* Environment Variables
+* Security Headers (Helmet)
+* CORS Restrictions
+* SQL Injection Protection
+* Secure Logging Practices
+* Production-safe Database Configuration
